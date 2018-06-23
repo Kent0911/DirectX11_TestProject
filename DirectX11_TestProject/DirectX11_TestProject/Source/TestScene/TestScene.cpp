@@ -6,10 +6,10 @@ Triangle::Triangle() {
 	mv_triangle[0].pos[2] = 0.0f;
 
 	mv_triangle[1].pos[0] = 0.0f;
-	mv_triangle[1].pos[1] = 0.5f;
+	mv_triangle[1].pos[1] = 300.0f;
 	mv_triangle[1].pos[2] = 0.0f;
 
-	mv_triangle[2].pos[0] = 0.5f;
+	mv_triangle[2].pos[0] = 300.0f;
 	mv_triangle[2].pos[1] = 0.0f;
 	mv_triangle[2].pos[2] = 0.0f;
 
@@ -19,6 +19,12 @@ Triangle::Triangle() {
 			if (3 == c) { mv_triangle[i].col[c] = 1.0f; }
 		}
 	}
+	
+	world.scale = DirectX::XMVectorSet(1.0f, 1.0f, 1.0f, 1.0f);
+	world.rotationOrigin = DirectX::XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+	world.rotation = 0.0f;
+	world.translation = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+
 }
 
 Triangle::~Triangle() {
@@ -98,8 +104,16 @@ void TestScene::Update() {
 }
 
 void TestScene::Render() {
+	RECT rc;
+	GetClientRect(kit::Engine::g_hWnd, &rc);
+	UINT width = rc.right - rc.left + 16;
+	UINT height = rc.bottom - rc.top + 31;
+
 	// ワールド変換行列
-	mx_world = DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+//	mx_world = DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+	mx_world = DirectX::XMMatrixAffineTransformation2D(m_triangle.get()->world.scale, m_triangle.get()->world.rotationOrigin,
+		m_triangle.get()->world.rotation, m_triangle.get()->world.translation);
+
 
 	// ビュー変換行列
 	DirectX::XMVECTOR eye = DirectX::XMVectorSet(0.0f, 0.0f, -10.0f, 0.0f);
@@ -107,12 +121,12 @@ void TestScene::Render() {
 	DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	mx_view = DirectX::XMMatrixLookAtLH(eye, at, up);
 
-	// 射影変換行列
+	// 透視射影変換行列
 	float fov = DirectX::XMConvertToRadians(45.0f);
-	float aspect = 600.0f / 600.0f;
+	float aspect = (float)height / (float)width;
 	float nearZ = 0.1f;
 	float farZ = 100.0f;
-	mx_projection = DirectX::XMMatrixPerspectiveFovLH(fov, aspect, nearZ, farZ);
+	mx_projection = DirectX::XMMatrixOrthographicLH((float)width, (float)height, nearZ, farZ);
 
 	ConstantBuffer cb;
 	DirectX::XMStoreFloat4x4(&cb.world, DirectX::XMMatrixTranspose(mx_world));
@@ -129,12 +143,7 @@ void TestScene::Render() {
 	ID3D11RenderTargetView* rtv[1] = { kit::Engine::g_pRenderTargetView };
 	kit::Engine::g_pImmediateContext->OMSetRenderTargets(1, rtv, kit::Engine::g_pDepthStencilView);
 
-	// Setup the viewport
-	RECT rc;
-	GetClientRect(kit::Engine::g_hWnd, &rc);
-	UINT width = rc.right - rc.left;
-	UINT height = rc.bottom - rc.top;
-
+	// Setup viewport
 	D3D11_VIEWPORT vp;
 	vp.Width = (FLOAT)width;
 	vp.Height = (FLOAT)height;

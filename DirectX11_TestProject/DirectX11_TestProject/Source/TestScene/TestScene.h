@@ -18,6 +18,15 @@ struct ConstantBuffer {
 	DirectX::XMFLOAT4X4 projection;
 };
 
+typedef struct WORLDMATRIX2D {
+	DirectX::XMVECTOR scale;
+	DirectX::XMVECTOR rotationOrigin;
+	float rotation;
+	DirectX::XMVECTOR translation;
+};
+
+
+
 class Triangle : public kit::Engine::KitBehaviour {
 public:
 	Triangle();
@@ -27,7 +36,9 @@ public:
 	virtual void Render();
 
 	VERTEX_ mv_triangle[3];
+	WORLDMATRIX2D world;
 	DWORD md_indexList[3 * 1];
+
 private:
 };
 
