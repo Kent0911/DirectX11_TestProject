@@ -1,21 +1,46 @@
 #include "TestScene.h"
 
 Triangle::Triangle() {
-	mv_triangle[0].pos[0] = 0.0f;
-	mv_triangle[0].pos[1] = 0.0f;
+	mv_triangle[0].pos[0] = -250.0f;
+	mv_triangle[0].pos[1] = 250.0f;
 	mv_triangle[0].pos[2] = 0.0f;
 
-	mv_triangle[1].pos[0] = 0.0f;
-	mv_triangle[1].pos[1] = 300.0f;
+	mv_triangle[1].pos[0] = 250.0f;
+	mv_triangle[1].pos[1] = -250.0f;
 	mv_triangle[1].pos[2] = 0.0f;
 
-	mv_triangle[2].pos[0] = 300.0f;
-	mv_triangle[2].pos[1] = 0.0f;
+	mv_triangle[2].pos[0] = -250.0f;
+	mv_triangle[2].pos[1] = -250.0f;
 	mv_triangle[2].pos[2] = 0.0f;
 
-	for (int i = 0; i < 3; ++i) {
+	mv_triangle[3].pos[0] = 250.0f;
+	mv_triangle[3].pos[1] = 250.0f;
+	mv_triangle[3].pos[2] = 0.0f;
+
+
+	// loadされたテクスチャはどうやら90度反時計回りに回転して読み込まれているらしい
+	mv_triangle[0].tex[0] = 1.0f;
+	mv_triangle[0].tex[1] = 0.0f;
+
+	mv_triangle[1].tex[0] = 0.0f;
+	mv_triangle[1].tex[1] = 1.0f;
+
+	mv_triangle[2].tex[0] = 1.0f;
+	mv_triangle[2].tex[1] = 1.0f;
+
+	mv_triangle[3].tex[0] = 0.0f;
+	mv_triangle[3].tex[1] =	0.0f;
+
+	md_indexList[0] = 0;
+	md_indexList[1] = 1;
+	md_indexList[2] = 2;
+	md_indexList[3] = 0;
+	md_indexList[4] = 3;
+	md_indexList[5] = 1;
+
+	for (int i = 0; i < 4; ++i) {
 		for (int c = 0; c < 4; ++c) {
-			mv_triangle[i].col[c] = 0.0f;
+			mv_triangle[i].col[c] = 1.0f;
 			if (3 == c) { mv_triangle[i].col[c] = 1.0f; }
 		}
 	}
@@ -54,9 +79,10 @@ HRESULT TestScene::Create(HWND _hWnd) {
 	HRESULT hr = S_OK;
 
 	D3D11_BUFFER_DESC bufferDesc;
-	bufferDesc.ByteWidth = sizeof(kit::Engine::VERTEX_) * 3;
+	ZeroMemory(&bufferDesc, sizeof(D3D11_BUFFER_DESC));
 	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
 	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.ByteWidth = sizeof(kit::Engine::VERTEX_) * 4;
 	bufferDesc.CPUAccessFlags = 0;
 	bufferDesc.MiscFlags = 0;
 	bufferDesc.StructureByteStride = 0;
@@ -72,10 +98,10 @@ HRESULT TestScene::Create(HWND _hWnd) {
 	D3D11_BUFFER_DESC indexBufferDesc;
 	ZeroMemory(&indexBufferDesc, sizeof(D3D11_BUFFER_DESC));
 	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	indexBufferDesc.ByteWidth = sizeof(DWORD) * 3 * 1;
 	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	indexBufferDesc.ByteWidth = sizeof(DWORD) * 3 * 2;
 	indexBufferDesc.CPUAccessFlags = 0;
-
+	
 	D3D11_SUBRESOURCE_DATA initData;
 	ZeroMemory(&initData, sizeof(D3D11_SUBRESOURCE_DATA));
 	initData.pSysMem = m_triangle.get()->md_indexList;
@@ -95,6 +121,19 @@ HRESULT TestScene::Create(HWND _hWnd) {
 
 	hr = kit::Engine::g_pd3dDevice->CreateBuffer(&cbDesc, nullptr, &kit::Engine::g_pConstantBuffer);
 	if (FAILED(hr)) { return hr; }
+
+	hr = DirectX::CreateWICTextureFromFile(kit::Engine::g_pd3dDevice, L"Resource/worldmap.jpg", nullptr, &m_triangle.get()->mp_resource);
+	if (FAILED(hr)) { return hr; }
+
+	D3D11_SAMPLER_DESC smpDesc;
+	ZeroMemory(&smpDesc, sizeof(D3D11_SAMPLER_DESC));
+	smpDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	smpDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	smpDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	smpDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	smpDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	smpDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	hr = kit::Engine::g_pd3dDevice->CreateSamplerState(&smpDesc, &kit::Engine::g_pSampler);
 
 	return S_OK;
 }
@@ -122,8 +161,6 @@ void TestScene::Render() {
 	mx_view = DirectX::XMMatrixLookAtLH(eye, at, up);
 
 	// 透視射影変換行列
-	float fov = DirectX::XMConvertToRadians(45.0f);
-	float aspect = (float)height / (float)width;
 	float nearZ = 0.1f;
 	float farZ = 100.0f;
 	mx_projection = DirectX::XMMatrixOrthographicLH((float)width, (float)height, nearZ, farZ);
@@ -163,7 +200,11 @@ void TestScene::Render() {
 	kit::Engine::g_pImmediateContext->VSSetConstantBuffers(0, 1, &kit::Engine::g_pConstantBuffer);
 	kit::Engine::g_pImmediateContext->VSSetShader(kit::Engine::g_pVertexShader, nullptr, 0);
 	kit::Engine::g_pImmediateContext->PSSetShader(kit::Engine::g_pPixcelShader, nullptr, 0);
+	kit::Engine::g_pImmediateContext->PSSetShaderResources(0, 1, &m_triangle->mp_resource);
+	kit::Engine::g_pImmediateContext->PSSetSamplers(0, 1, &kit::Engine::g_pSampler);
 	kit::Engine::g_pImmediateContext->OMSetRenderTargets(1, &kit::Engine::g_pRenderTargetView, kit::Engine::g_pDepthStencilView);
 
-	kit::Engine::g_pImmediateContext->Draw(3, 0);
+
+
+	kit::Engine::g_pImmediateContext->DrawIndexed(6, 0, 0);
 }

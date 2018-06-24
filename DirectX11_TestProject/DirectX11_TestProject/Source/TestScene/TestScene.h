@@ -5,8 +5,15 @@
 
 #include "../../KitEngine/KitEngine.h"
 #include "../../KitEngine/Scene/Scene.h"
+#include "WICTextureLoader.h"
 
 typedef struct VERTEX_ {
+	float pos[3];
+	float col[4];
+	float tex[2];
+};
+
+typedef struct PIXEL_ {
 	float pos[3];
 	float col[4];
 	float tex[2];
@@ -35,9 +42,11 @@ public:
 	virtual void Update();
 	virtual void Render();
 
-	VERTEX_ mv_triangle[3];
+	VERTEX_ mv_triangle[4];
+	PIXEL_ m_pxtriangle[250 * 250];
 	WORLDMATRIX2D world;
-	DWORD md_indexList[3 * 1];
+	DWORD md_indexList[3 * 2];
+	ID3D11ShaderResourceView* mp_resource;
 
 private:
 };
